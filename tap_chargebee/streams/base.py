@@ -2,6 +2,7 @@ import singer
 import time
 import json
 import os
+import pytz
 
 from .util import Util
 from dateutil.parser import parse
@@ -12,6 +13,21 @@ from tap_chargebee.state import get_last_record_value_for_table, incorporate, \
     save_state
 
 LOGGER = singer.get_logger()
+
+def ensure_tz_aware_dt(dt):
+    """
+    Check whether a datetime is timezone aware. 
+    Localize the timezone to UTC if not timezone aware.
+    """
+    dt_is_timezone_aware = dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None
+
+    if not dt_is_timezone_aware:
+        # Localize timezone to UTC
+        utc=pytz.UTC
+
+        dt = utc.localize(dt)
+
+    return dt
 
 
 class BaseChargebeeStream(BaseStream):
@@ -189,11 +205,19 @@ class BaseChargebeeStream(BaseStream):
                 ctr.increment(amount=len(to_write))
                 
                 for item in to_write:
-                    #if item.get(bookmark_key) is not None:
-                    max_date = max(
-                        max_date,
-                        parse(item.get(bookmark_key))
-                    )
+                    bookmark_key = item.get(bookmark_key, None)
+
+                    if bookmark_key is not None:
+                        bookmark_date = parse(bookmark_key)
+
+                        LOGGER.info(f"BOOKMARK_KEY value: {bookmark_date}")
+                        
+                        max_date = max(
+                            ensure_tz_aware_dt(max_date),
+                            ensure_tz_aware_dt(bookmark_date)
+                        )
+                    else:
+                        LOGGER.info("BOOKMARK_KEY not found. Using max date.")
 
             self.state = incorporate(
                 self.state, table, 'bookmark_date', max_date)
