@@ -110,6 +110,13 @@ class BaseChargebeeStream(BaseStream):
         if custom_fields:
             record["custom_fields"] = json.dumps(custom_fields)
         return record
+    
+    def appendEmptyFields(self, record, schema):
+        if isinstance(record, dict) and schema:
+            for key in schema["properties"]:
+                if not record.get(key, None):
+                    record[key] = None
+        return record
 
     # This overrides the transform_record method in the Fistown Analytics tap-framework package
     def transform_record(self, record):
@@ -122,6 +129,8 @@ class BaseChargebeeStream(BaseStream):
 
             if self.catalog.metadata is not None:
                 metadata = singer.metadata.to_map(self.catalog.metadata)
+
+            record = self.appendEmptyFields(record, self.catalog.schema.to_dict())
 
             return tx.transform(record, self.catalog.schema.to_dict(), metadata)
 
