@@ -30,12 +30,7 @@ class PaymentSourcesStream(BaseChargebeeStream):
 
         LOGGER.info("Starting full table sync for {}.".format(self.TABLE))
         stream_version = int(time.time() * 1000)
-        activate_version_message = singer.ActivateVersionMessage(
-            stream=self.TABLE,
-            version=stream_version,
-        )
-        singer.write_message(activate_version_message)
-
+        singer.write_version(stream_name=self.TABLE, version=stream_version)
         params = {}
         while not done:
             response = self.client.make_request(
@@ -52,7 +47,11 @@ class PaymentSourcesStream(BaseChargebeeStream):
             to_write = self.get_stream_data(records)
 
             with singer.metrics.record_counter(endpoint=table) as ctr:
-                singer.write_records(table, to_write)
+                for record in to_write:
+                    record_message = singer.RecordMessage(
+                        stream=table, record=record, version=stream_version
+                    )
+                    singer.write_message(record_message)
                 ctr.increment(amount=len(to_write))
 
             if not response.get("next_offset"):
@@ -61,5 +60,5 @@ class PaymentSourcesStream(BaseChargebeeStream):
             else:
                 LOGGER.info("Advancing by one offset.")
                 params["offset"] = response.get("next_offset")
-        singer.write_message(activate_version_message)
+        singer.write_version(stream_name=self.TABLE, version=stream_version)
         LOGGER.info("Finished syncing {}.".format(self.TABLE))
