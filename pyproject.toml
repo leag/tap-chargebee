@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tap-chargebee"
+version = "1.0.2"
+description = "Singer.io tap for extracting data from the Chargebee API"
+authors = [
+    {name = "dwallace@envoy.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "tap-framework",
+]
+
+[project.scripts]
+tap-chargebee = "tap_chargebee:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tap_chargebee"]
+
+[tool.hatch.build.targets.wheel.sources]
+"tap_chargebee" = "tap_chargebee"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "tap_chargebee"
+]
+
+[tool.uv.sources]
+tap-framework = { git = "https://github.com/leag/tap-framework.git" }
